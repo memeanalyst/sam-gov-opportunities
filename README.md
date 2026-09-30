@@ -13,9 +13,12 @@ Each run returns clean, flat JSON records with:
 - NAICS and classification codes
 - Set-aside program (e.g. Total Small Business, 8(a), HUBZone, SDVOSB, WOSB)
 - Place of performance (city, state, zip)
-- Public contracting-officer contact(s) listed on the notice
 - Award details (for award notices)
 - Link to the full opportunity description
+
+Note: point-of-contact names, emails, and phone numbers are intentionally
+excluded from the output. SAM.gov publishes them on notices, but this Actor
+does not collect personal data.
 
 ## Getting your free SAM.gov API key
 
@@ -71,21 +74,20 @@ The SAM.gov API requires a free personal API key (no paid account needed):
   "naicsCode": "541512",
   "setAside": "Total Small Business Set-Aside (FAR 19.5)",
   "setAsideCode": "SBA",
-  "placeOfPerformance": {"city": "Rock Island", "state": "Illinois", "zip": "61299", "country": "UNITED STATES"},
-  "pointOfContact": [{"type": "Primary", "title": "Contract Specialist", "fullName": "Jane Doe", "email": "jane.doe@army.mil", "phone": "309-782-1234"}]
+  "placeOfPerformance": {"city": "Rock Island", "state": "Illinois", "zip": "61299", "country": "UNITED STATES"}
 }
 ```
 
 ## Pricing
 
-Pay-per-event: **$0.003 per opportunity fetched** ($3 per 1,000). Runs with zero matching notices are not charged. Standard Apify platform usage applies.
+Pay-per-event: **$0.002 per opportunity fetched** ($2 per 1,000). Runs with zero matching notices are not charged. Standard Apify platform usage applies.
 
 ## Legal & safety notes
 
 - Data source: the official SAM.gov public API, used with the end user's own API key per GSA's terms.
-- All records are public U.S. federal procurement notices. Contact details included are the public business contacts published on the notices themselves.
-- The Actor makes only a few requests per minute, well under SAM.gov rate limits.
-- Your API key is sent only to `api.sam.gov` and never written to the dataset.
+- No personal data is collected: point-of-contact names, emails, and phone numbers are excluded from the output.
+- Requests are paginated with a 1-second pause between pages to stay polite. If SAM.gov returns a 429 rate-limit response, the Actor backs off for 60 seconds and retries (up to 3 times) before giving up.
+- Your API key is sent only to `api.sam.gov` and never written to the dataset: secret-looking query parameters are stripped from every emitted URL, and network error messages are sanitized.
 
 ## Local development
 

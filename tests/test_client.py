@@ -15,6 +15,7 @@ import pytest
 
 from sam_gov.client import (
     SamGovError,
+    _sanitize_url,
     build_params,
     fetch_all,
     map_opportunity,
@@ -104,9 +105,18 @@ def test_map_opportunity_solicitation():
     assert item['placeOfPerformance']['city'] == 'Rock Island'
     assert item['placeOfPerformance']['state'] == 'Illinois'
     assert item['placeOfPerformance']['zip'] == '61299'
-    assert len(item['pointOfContact']) == 1
-    assert item['pointOfContact'][0]['email'] == 'jane.doe@army.mil'
-    assert item['pointOfContact'][0]['fullName'] == 'Jane Doe'
+    # No personal data may leak into output, even though the fixture carries it.
+    assert 'pointOfContact' not in item
+    serialized = json.dumps(item)
+    assert 'jane.doe@army.mil' not in serialized
+    assert 'Jane Doe' not in serialized
+    assert '309-782-1234' not in serialized
+    # The fixture description URL contains api_key=KEY — it must be stripped.
+    assert item['descriptionUrl'] == (
+        'https://api.sam.gov/opportunities/v2/search'
+        '?noticeid=5b345bbb7127b91a3ad577b203fc6f68'
+    )
+    assert 'api_key' not in serialized
     assert item['agency'].startswith('DEPT OF DEFENSE')
     assert item['award'] is None
 
@@ -115,7 +125,7 @@ def test_map_opportunity_award_notice():
     item = map_opportunity(FIXTURE['opportunitiesData'][1])
     assert item['award']['amount'] == 1250000
     assert item['award']['awardeeName'] == 'Acme Cyber LLC'
-    assert item['pointOfContact'] == []
+    assert 'pointOfContact' not in item
     assert item['responseDeadline'] is None
 
 
@@ -167,3 +177,78 @@ def test_fetch_all_empty_results():
 
     items, total = asyncio.run(run())
     assert items == [] and total == 0
+
+
+def test_sanitize_url_strips_secret_params():
+    url = ('https://api.sam.gov/opportunities/v2/search'
+           '?noticeid=abc&api_key=SUPERSECRET&other=1')
+    clean = _sanitize_url(url)
+    assert 'SUPERSECRET' not in clean
+    assert 'api_key' not in clean
+    assert 'noticeid=abc' in clean
+    assert 'other=1' in clean
+
+
+def test_sanitize_url_variants_and_passthrough():
+    assert _sanitize_url('https://x.test/a?API_KEY=K&b=2') == 'https://x.test/a?b=2'
+    assert _sanitize_url('https://x.test/a?b=2') == 'https://x.test/a?b=2'
+    assert _sanitize_url(None) is None
+    assert _sanitize_url('') == ''
+
+
+def test_fetch_all_429_retries_then_succeeds(monkeypatch):
+    calls = {'n': 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls['n'] += 1
+        if calls['n'] < 3:
+            return httpx.Response(429, text='slow down')
+        return httpx.Response(200, json={'totalRecords': 0, 'opportunitiesData': []})
+
+    async def no_sleep(_):
+        return None
+
+    monkeypatch.setattr('sam_gov.client.asyncio.sleep', no_sleep)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_all('KEY', {'limit': 1}, 10, client=client)
+
+    items, total = asyncio.run(run())
+    assert calls['n'] == 3
+    assert items == []
+
+
+def test_fetch_all_429_gives_up_after_retries(monkeypatch):
+    async def no_sleep(_):
+        return None
+
+    monkeypatch.setattr('sam_gov.client.asyncio.sleep', no_sleep)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, text='slow down')
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            await fetch_all('KEY', {'limit': 1}, 10, client=client)
+
+    with pytest.raises(SamGovError, match='rate limit keeps triggering'):
+        asyncio.run(run())
+
+
+def test_fetch_all_request_error_sanitizes_key():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError('should not be called')
+
+    class FailingClient(httpx.AsyncClient):
+        async def get(self, url, **kwargs):
+            req = httpx.Request('GET', f'{url}?api_key=LEAKEDKEY')
+            raise httpx.ConnectError('boom', request=req)
+
+    async def run():
+        async with FailingClient(transport=httpx.MockTransport(handler)) as client:
+            await fetch_all('LEAKEDKEY', {'limit': 1}, 10, client=client)
+
+    with pytest.raises(SamGovError) as excinfo:
+        asyncio.run(run())
+    assert 'LEAKEDKEY' not in str(excinfo.value)
