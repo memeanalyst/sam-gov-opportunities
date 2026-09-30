@@ -1,0 +1,1 @@
+{"$schema":"https://apify.com/schemas/v1/output.ide.json","actorOutputSchemaVersion":1,"properties":{"results":{"template":"{{links.apiDefaultDatasetUrl}}/items","title":"Results","type":"string"}},"title":"SAM.gov opportunities output"}

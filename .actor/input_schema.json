@@ -1,0 +1,127 @@
+{
+  "$schema": "https://apify.com/schemas/v1/input.ide.json",
+  "properties": {
+    "maxItems": {
+      "default": 100,
+      "description": "Maximum number of opportunities to return.",
+      "editor": "number",
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Max opportunities",
+      "type": "integer"
+    },
+    "naicsCode": {
+      "description": "6-digit NAICS industry code, e.g. 541512 for custom computer programming services.",
+      "editor": "textfield",
+      "title": "NAICS code",
+      "type": "string"
+    },
+    "noticeTypes": {
+      "title": "Notice types",
+      "type": "array",
+      "description": "Which kinds of notices to include.",
+      "editor": "select",
+      "uniqueItems": true,
+      "default": [
+        "o",
+        "p",
+        "k"
+      ],
+      "items": {
+        "type": "string",
+        "enum": [
+          "o",
+          "p",
+          "k",
+          "r",
+          "s",
+          "a",
+          "u"
+        ],
+        "enumTitles": [
+          "Solicitation",
+          "Pre-solicitation",
+          "Combined synopsis/solicitation",
+          "Sources sought",
+          "Special notice",
+          "Award notice",
+          "Justification (J&A)"
+        ]
+      }
+    },
+    "organizationName": {
+      "description": "Filter by department or agency name, e.g. \"Department of Veterans Affairs\".",
+      "editor": "textfield",
+      "title": "Agency / organization name",
+      "type": "string"
+    },
+    "postedFrom": {
+      "description": "Only notices posted on or after this date. Format MM/DD/YYYY (or YYYY-MM-DD). Defaults to 30 days ago. Max range: 1 year.",
+      "editor": "textfield",
+      "title": "Posted from",
+      "type": "string"
+    },
+    "postedTo": {
+      "description": "Only notices posted on or before this date. Format MM/DD/YYYY (or YYYY-MM-DD). Defaults to today.",
+      "editor": "textfield",
+      "title": "Posted to",
+      "type": "string"
+    },
+    "samApiKey": {
+      "description": "Your free SAM.gov public API key. Get one at sam.gov: sign in, open Account Details, enter your password, and copy the API key. The key is only sent to api.sam.gov and is never stored in the output.",
+      "editor": "textfield",
+      "isSecret": true,
+      "title": "SAM.gov API key",
+      "type": "string"
+    },
+    "setAsideCode": {
+      "default": "",
+      "description": "Restrict to a small-business set-aside program.",
+      "editor": "select",
+      "enum": [
+        "",
+        "SBA",
+        "8A",
+        "HZC",
+        "SDVOSBC",
+        "WOSB",
+        "EDWOSB"
+      ],
+      "enumTitles": [
+        "Any",
+        "Total Small Business (SBA)",
+        "8(a)",
+        "HUBZone (HZC)",
+        "Service-Disabled Veteran-Owned (SDVOSBC)",
+        "Women-Owned (WOSB)",
+        "Economically Disadvantaged WOSB (EDWOSB)"
+      ],
+      "title": "Set-aside type",
+      "type": "string"
+    },
+    "solicitationNumber": {
+      "description": "Look up one specific solicitation by its number.",
+      "editor": "textfield",
+      "title": "Solicitation number",
+      "type": "string"
+    },
+    "state": {
+      "description": "Two-letter US state code, e.g. TX.",
+      "editor": "textfield",
+      "title": "Place of performance (state)",
+      "type": "string"
+    },
+    "title": {
+      "description": "Filter opportunities by a keyword or phrase in the opportunity title (e.g. \"janitorial services\").",
+      "editor": "textfield",
+      "title": "Keyword in title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "samApiKey"
+  ],
+  "schemaVersion": 1,
+  "title": "SAM.gov opportunity search",
+  "type": "object"
+}
