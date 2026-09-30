@@ -216,11 +216,19 @@ async def fetch_all(
                     f'Could not reach api.sam.gov: {exc}. Check your network / proxy settings.'
                 ) from exc
 
-            if resp.status_code == 401:
+            if resp.status_code in (401, 404):
+                # SAM.gov answers invalid keys with 401 or 404 on this endpoint.
                 raise SamGovError(
-                    'SAM.gov rejected the API key (401). Get a free key at sam.gov: '
+                    'SAM.gov rejected the API key '
+                    f'(HTTP {resp.status_code}). Get a free key at sam.gov: '
                     'sign in, open Account Details, enter your password, and copy the '
                     'public API key into the "SAM.gov API key" input.'
+                )
+            if resp.status_code == 403:
+                raise SamGovError(
+                    'SAM.gov denied the request (403). Your API key may lack the '
+                    'required role, or the key was just created and is not active yet. '
+                    'Wait a few minutes and try again.'
                 )
             if resp.status_code == 429:
                 raise SamGovError(
@@ -228,7 +236,7 @@ async def fetch_all(
                     'with a smaller date range or fewer pages.'
                 )
             if resp.status_code >= 400:
-                detail = resp.text[:300]
+                detail = (resp.text or '').strip()[:300] or 'no detail returned'
                 raise SamGovError(
                     f'SAM.gov API error {resp.status_code}: {detail}'
                 )

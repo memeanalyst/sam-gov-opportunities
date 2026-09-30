@@ -46,7 +46,17 @@ async def main() -> None:
         if items:
             await Actor.push_data(items)
             # Pay-per-event: one chargeable event per delivered opportunity.
-            await Actor.charge('opportunity-fetched', count=len(items))
-            Actor.log.info('Charged %d opportunity-fetched event(s).', len(items))
+            # Defensive: if monetization isn't configured yet, log loudly but
+            # don't fail an otherwise successful run.
+            try:
+                await Actor.charge('opportunity-fetched', count=len(items))
+            except Exception as exc:  # noqa: BLE001
+                Actor.log.warning(
+                    'Could not charge %d opportunity-fetched event(s): %s. '
+                    'Check the Actor\'s Monetization settings.',
+                    len(items), exc,
+                )
+            else:
+                Actor.log.info('Charged %d opportunity-fetched event(s).', len(items))
         else:
             Actor.log.info('No opportunities matched the search — nothing charged.')
